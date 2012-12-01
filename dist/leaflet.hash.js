@@ -40,16 +40,14 @@
 
   L.Hash.prototype.makeState = function(hash, replace) {
     var mhash;
+    if (replace == null) {
+      replace = false;
+    }
     if (!history.pushState) {
       return false;
     }
     mhash = [hash.zoom, hash.center[0], hash.center[1]];
-    if (!replace) {
-      history.pushState(hash, "", "#" + mhash.join("/"));
-    }
-    if (replace) {
-      history.replaceState(hash, "", "#" + mhash.join("/"));
-    }
+    this.pushState(hash, "#" + mhash.join("/"), replace);
     return this.lastHash = hash;
   };
 
@@ -78,6 +76,17 @@
 
   L.Hash.prototype.update = function() {
     return this.makeState(this.getHash());
+  };
+
+  L.Hash.prototype.pushState = function(state, hash, replace) {
+    if (history && history.pushState && history.replaceState) {
+      if (!replace) {
+        history.pushState(state, "", hash);
+      }
+      if (replace) {
+        return history.replaceState(state, "", hash);
+      }
+    }
   };
 
   L.Hash.prototype.remove = function() {

@@ -26,11 +26,10 @@ L.Hash::getHash = ->
   	  center.lng.toFixed(precision)
   	]
   hash
-L.Hash::makeState = (hash, replace)->
+L.Hash::makeState = (hash, replace=false)->
   return false unless history.pushState
   mhash = [hash.zoom, hash.center[0], hash.center[1]]
-  history.pushState hash, "", "#" + mhash.join("/") unless replace
-  history.replaceState hash, "", "#" + mhash.join("/") if replace
+  @pushState hash, "#" + mhash.join("/"),  replace
   @lastHash=hash
 L.Hash::parseHash = (hash) ->
   hash = hash.substr(1)  if hash.indexOf("#") is 0
@@ -48,6 +47,10 @@ L.Hash::parseHash = (hash) ->
     false
 L.Hash::update = ->
 	@makeState @getHash()
+L.Hash::pushState = (state, hash, replace)->
+  if history and history.pushState and history.replaceState
+    history.pushState state, "", hash unless replace
+    history.replaceState state, "", hash if replace
 L.Hash::remove = ->
   @map.off "moveend", @update
   window.onpopstate = null
