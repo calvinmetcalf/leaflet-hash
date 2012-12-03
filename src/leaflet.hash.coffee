@@ -51,6 +51,8 @@ L.Hash::pushState = (state, hash, replace)->
   if history and history.pushState and history.replaceState
     history.pushState state, "", hash unless replace
     history.replaceState state, "", hash if replace
+  else
+  	location.replace hash
 L.Hash::remove = ->
   @map.off "moveend", @update
   window.onpopstate = null

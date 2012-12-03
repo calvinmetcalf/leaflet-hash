@@ -86,6 +86,8 @@
       if (replace) {
         return history.replaceState(state, "", hash);
       }
+    } else {
+      return location.replace(hash);
     }
   };
 
