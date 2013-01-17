@@ -221,24 +221,13 @@
 
   L.Map.include({
     addHash: function() {
-      var params,
-        _this = this;
+      var params;
       params = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-      if (this._loaded) {
-        this._hash = (function(func, args, ctor) {
-          ctor.prototype = func.prototype;
-          var child = new ctor, result = func.apply(child, args);
-          return Object(result) === result ? result : child;
-        })(Hash, [this].concat(__slice.call(params)), function(){});
-      } else {
-        this.on("load", function() {
-          return _this._hash = (function(func, args, ctor) {
-            ctor.prototype = func.prototype;
-            var child = new ctor, result = func.apply(child, args);
-            return Object(result) === result ? result : child;
-          })(Hash, [_this].concat(__slice.call(params)), function(){});
-        });
-      }
+      this._hash = (function(func, args, ctor) {
+        ctor.prototype = func.prototype;
+        var child = new ctor, result = func.apply(child, args);
+        return Object(result) === result ? result : child;
+      })(Hash, [this].concat(__slice.call(params)), function(){});
       return this;
     },
     removeHash: function() {

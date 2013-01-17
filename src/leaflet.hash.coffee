@@ -123,11 +123,7 @@ L.hash = (params...)->
 
 L.Map.include
 	addHash:(params...)->
-		if @_loaded
-			@_hash =  new Hash(@,params...)
-		else
-			@on "load",()=>
-				@_hash =  new Hash(@,params...)
+		@_hash =  new Hash(@,params...)
 		@
 	removeHash:()->
 		@_hash.remove()
