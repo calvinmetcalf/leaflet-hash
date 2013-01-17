@@ -2,7 +2,7 @@ class Hash
 	constructor: (@map,@options={}) ->
 		unless @options.path
 			if @options.lc
-				@options.path = '{z}/{lat}/{lng}/{base}'#/{overlay}'
+				@options.path = '{z}/{lat}/{lng}/{base}'
 			else
 				@options.path = '{z}/{lat}/{lng}'
 		if @map._loaded
@@ -12,33 +12,40 @@ class Hash
 	startListning : =>
 		@updateFromState @parseHash(location.hash) if location.hash
 		if history.pushState
-			history.replaceState(@formatHash()...) unless location.hash
+			history.replaceState(@formatState()...) unless location.hash
 			window.onpopstate=(event)=>
 				@updateFromState(event.state) if event.state
-			@map.on "moveend baselayerchange", ()=>
-				pstate = @formatHash()
-				if location.hash != pstate[2]
+			@map.on "moveend", ()=>
+				pstate = @formatState()
+				if location.hash != pstate[2] and !@moving
 					history.pushState pstate...
 		else
-			location.hash = @formatHash()[2] unless location.hash
+			location.hash = @formatState()[2] unless location.hash
 			onHashChange = ()=>
-				pstate = @formatHash()
-				if location.hash != pstate[2]
+				pstate = @formatState()
+				if location.hash != pstate[2] and !@moving
 					location.hash = pstate[2]
-			@map.on "moveend baselayerchange", onHashChange
+			@map.on "moveend", onHashChange
 			if ('onhashchange' of window) and (window.documentMode == undefined or window.documentMode > 7)
 				window.onhashchange = ()=>
 					@updateFromState @parseHash(location.hash) if location.hash
 			else
 				@hashChangeInterval = setInterval onHashChange, 50
+		@map.on "baselayerchange", (e)=>
+			@base = @options.lc._layers[e.layer._leaflet_id].name
+			pstate = @formatState()
+			if history.pushState
+				if location.hash != pstate[2] and !@moving
+					history.pushState pstate...
+			else
+				if location.hash != pstate[2] and !@moving
+					location.hash = pstate[2]
+				
 	parseHash : (hash) ->
 		path = @options.path.split("/")
 		zIndex = path.indexOf("{z}")
 		latIndex = path.indexOf("{lat}")
 		lngIndex = path.indexOf("{lng}")
-		if @options.lc
-			baseIndex = path.indexOf("{base}")
-			#overlayIndex = path.indexOf("{overlay}")
 		hash = hash.substr(1)  if hash.indexOf("#") is 0
 		args = hash.split("/")
 		if args.length > 2
@@ -52,74 +59,62 @@ class Hash
 					center: new L.LatLng(lat, lon)
 					zoom: zoom
 				}
-			if args.length > 3
-				out.base = args[baseIndex]
-				#out.overlay = args[overlayIndex]
-			out
+				if args.length > 3
+					out.base = args[path.indexOf("{base}")]
+					out
+				else
+					out
 		else
 			false
 	updateFromState : (state)=>
+		return if @moving
+		@moving = true
 		@map.setView state.center, state.zoom
-		if state.base
-			@setBase state.base
-		#if state.overlay
-		#	@setOverlay state.overlay.join(",")
-	formatHash : () =>
+		@setBase state.base if state.base
+		@moving = false
+		true
+	formatState : () =>
 		center = @map.getCenter()
 		zoom = @map.getZoom()
 		precision = Math.max(0, Math.ceil(Math.log(zoom) / Math.LN2))
 		state =  {center:center,zoom:zoom}
 		template = {lat:center.lat.toFixed(precision),lng:center.lng.toFixed(precision),z:zoom}
-		if @options.lc
-			layers = @getLayers()
-			state.base=layers[0]
-			template.base=layers[0]
-			#state.overlay=layers[1]
-			#template.overlay = layers[1].join(",") if layers[1]
-			#template.overlay = "-" unless layers[1]
+		if @options.path.indexOf("{base}") > -1
+			state.base = @getBase()
+			template.base = state.base
 		[
 			state
 			"a"
 			'#'+L.Util.template @options.path,template
 		]
-
+	setBase : (base)=>
+		@base = base
+		inputs = @options.lc._form.getElementsByTagName('input')
+		len = inputs.length
+		i = 0
+		while i<len
+			if inputs[i].name is 'leaflet-base-layers' and @options.lc._layers[inputs[i].layerId].name is base
+				inputs[i].checked = true
+				@options.lc._onInputClick()
+				return true
+			i++
+	getBase : =>
+		if @base
+			return @base
+		inputs = @options.lc._form.getElementsByTagName('input')
+		len = inputs.length
+		i = 0
+		while i<len
+			if inputs[i].name is 'leaflet-base-layers' and inputs[i].checked
+				@base = @options.lc._layers[inputs[i].layerId].name
+				return @base
+		false	
 	remove : ()=>
 		@map.off "moveend"
 		if window.onpopstate
 			window.onpopstate = null
 		location.hash=""
-	getLayers : ()=>
-		out=["",[]]
-		for key of @options.lc._layers
-			if @map._layers[key]
-				if @options.lc._layers[key].overlay
-					out[1].push @options.lc._layers[key].name
-				else
-					out[0] = @options.lc._layers[key].name
-		out
-	setBase : (baseLayer)=>
-		baseLayers = @options.lc._baseLayersList
-		len = baseLayers.children.length
-		i=0
-		while i < len
-			if baseLayers.children[i].children[1].innerHTML.slice(1) == baseLayer
-				baseLayers.children[i].children[0].checked=true
-			i++
-		@options.lc._onInputClick()
-	setOverlay : (overlayString)=>
-		if overlayString == "-"
-			return
-		overlays = overlayString.split(",")
-		overlayLayers = @options.lc._container.children[1].children[2].children
-		len = overlayLayers.length
-		i=0
-		while i < len
-			if overlayLayers[i].children[1].innerHTML.slice(1) in overlays
-				overlayLayers[i].children[0].checked = true
-			else
-				overlayLayers[i].children[0].checked = false
-			i++
-		@options.lc._onInputClick()
+		clearInterval @hashChangeInterval
 
 L.Hash = Hash
 

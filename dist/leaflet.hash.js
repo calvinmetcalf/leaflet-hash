@@ -1,7 +1,6 @@
 (function() {
   var Hash,
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     __slice = [].slice;
 
   Hash = (function() {
@@ -9,15 +8,13 @@
     function Hash(map, options) {
       this.map = map;
       this.options = options != null ? options : {};
-      this.setOverlay = __bind(this.setOverlay, this);
+      this.remove = __bind(this.remove, this);
+
+      this.getBase = __bind(this.getBase, this);
 
       this.setBase = __bind(this.setBase, this);
 
-      this.getLayers = __bind(this.getLayers, this);
-
-      this.remove = __bind(this.remove, this);
-
-      this.formatHash = __bind(this.formatHash, this);
+      this.formatState = __bind(this.formatState, this);
 
       this.updateFromState = __bind(this.updateFromState, this);
 
@@ -45,53 +42,64 @@
       }
       if (history.pushState) {
         if (!location.hash) {
-          history.replaceState.apply(history, this.formatHash());
+          history.replaceState.apply(history, this.formatState());
         }
         window.onpopstate = function(event) {
           if (event.state) {
             return _this.updateFromState(event.state);
           }
         };
-        return this.map.on("moveend baselayerchange", function() {
+        this.map.on("moveend", function() {
           var pstate;
-          pstate = _this.formatHash();
-          if (location.hash !== pstate[2]) {
+          pstate = _this.formatState();
+          if (location.hash !== pstate[2] && !_this.moving) {
             return history.pushState.apply(history, pstate);
           }
         });
       } else {
         if (!location.hash) {
-          location.hash = this.formatHash()[2];
+          location.hash = this.formatState()[2];
         }
         onHashChange = function() {
           var pstate;
-          pstate = _this.formatHash();
-          if (location.hash !== pstate[2]) {
+          pstate = _this.formatState();
+          if (location.hash !== pstate[2] && !_this.moving) {
             return location.hash = pstate[2];
           }
         };
-        this.map.on("moveend baselayerchange", onHashChange);
+        this.map.on("moveend", onHashChange);
         if (('onhashchange' in window) && (window.documentMode === void 0 || window.documentMode > 7)) {
-          return window.onhashchange = function() {
+          window.onhashchange = function() {
             if (location.hash) {
               return _this.updateFromState(_this.parseHash(location.hash));
             }
           };
         } else {
-          return this.hashChangeInterval = setInterval(onHashChange, 50);
+          this.hashChangeInterval = setInterval(onHashChange, 50);
         }
       }
+      return this.map.on("baselayerchange", function(e) {
+        var pstate;
+        _this.base = _this.options.lc._layers[e.layer._leaflet_id].name;
+        pstate = _this.formatState();
+        if (history.pushState) {
+          if (location.hash !== pstate[2] && !_this.moving) {
+            return history.pushState.apply(history, pstate);
+          }
+        } else {
+          if (location.hash !== pstate[2] && !_this.moving) {
+            return location.hash = pstate[2];
+          }
+        }
+      });
     };
 
     Hash.prototype.parseHash = function(hash) {
-      var args, baseIndex, lat, latIndex, lngIndex, lon, out, path, zIndex, zoom;
+      var args, lat, latIndex, lngIndex, lon, out, path, zIndex, zoom;
       path = this.options.path.split("/");
       zIndex = path.indexOf("{z}");
       latIndex = path.indexOf("{lat}");
       lngIndex = path.indexOf("{lng}");
-      if (this.options.lc) {
-        baseIndex = path.indexOf("{base}");
-      }
       if (hash.indexOf("#") === 0) {
         hash = hash.substr(1);
       }
@@ -107,25 +115,33 @@
             center: new L.LatLng(lat, lon),
             zoom: zoom
           };
+          if (args.length > 3) {
+            out.base = args[path.indexOf("{base}")];
+            return out;
+          } else {
+            return out;
+          }
         }
-        if (args.length > 3) {
-          out.base = args[baseIndex];
-        }
-        return out;
       } else {
         return false;
       }
     };
 
     Hash.prototype.updateFromState = function(state) {
+      if (this.moving) {
+        return;
+      }
+      this.moving = true;
       this.map.setView(state.center, state.zoom);
       if (state.base) {
-        return this.setBase(state.base);
+        this.setBase(state.base);
       }
+      this.moving = false;
+      return true;
     };
 
-    Hash.prototype.formatHash = function() {
-      var center, layers, precision, state, template, zoom;
+    Hash.prototype.formatState = function() {
+      var center, precision, state, template, zoom;
       center = this.map.getCenter();
       zoom = this.map.getZoom();
       precision = Math.max(0, Math.ceil(Math.log(zoom) / Math.LN2));
@@ -138,12 +154,44 @@
         lng: center.lng.toFixed(precision),
         z: zoom
       };
-      if (this.options.lc) {
-        layers = this.getLayers();
-        state.base = layers[0];
-        template.base = layers[0];
+      if (this.options.path.indexOf("{base}") > -1) {
+        state.base = this.getBase();
+        template.base = state.base;
       }
       return [state, "a", '#' + L.Util.template(this.options.path, template)];
+    };
+
+    Hash.prototype.setBase = function(base) {
+      var i, inputs, len;
+      this.base = base;
+      inputs = this.options.lc._form.getElementsByTagName('input');
+      len = inputs.length;
+      i = 0;
+      while (i < len) {
+        if (inputs[i].name === 'leaflet-base-layers' && this.options.lc._layers[inputs[i].layerId].name === base) {
+          inputs[i].checked = true;
+          this.options.lc._onInputClick();
+          return true;
+        }
+        i++;
+      }
+    };
+
+    Hash.prototype.getBase = function() {
+      var i, inputs, len;
+      if (this.base) {
+        return this.base;
+      }
+      inputs = this.options.lc._form.getElementsByTagName('input');
+      len = inputs.length;
+      i = 0;
+      while (i < len) {
+        if (inputs[i].name === 'leaflet-base-layers' && inputs[i].checked) {
+          this.base = this.options.lc._layers[inputs[i].layerId].name;
+          return this.base;
+        }
+      }
+      return false;
     };
 
     Hash.prototype.remove = function() {
@@ -151,56 +199,8 @@
       if (window.onpopstate) {
         window.onpopstate = null;
       }
-      return location.hash = "";
-    };
-
-    Hash.prototype.getLayers = function() {
-      var key, out;
-      out = ["", []];
-      for (key in this.options.lc._layers) {
-        if (this.map._layers[key]) {
-          if (this.options.lc._layers[key].overlay) {
-            out[1].push(this.options.lc._layers[key].name);
-          } else {
-            out[0] = this.options.lc._layers[key].name;
-          }
-        }
-      }
-      return out;
-    };
-
-    Hash.prototype.setBase = function(baseLayer) {
-      var baseLayers, i, len;
-      baseLayers = this.options.lc._baseLayersList;
-      len = baseLayers.children.length;
-      i = 0;
-      while (i < len) {
-        if (baseLayers.children[i].children[1].innerHTML.slice(1) === baseLayer) {
-          baseLayers.children[i].children[0].checked = true;
-        }
-        i++;
-      }
-      return this.options.lc._onInputClick();
-    };
-
-    Hash.prototype.setOverlay = function(overlayString) {
-      var i, len, overlayLayers, overlays, _ref;
-      if (overlayString === "-") {
-        return;
-      }
-      overlays = overlayString.split(",");
-      overlayLayers = this.options.lc._container.children[1].children[2].children;
-      len = overlayLayers.length;
-      i = 0;
-      while (i < len) {
-        if (_ref = overlayLayers[i].children[1].innerHTML.slice(1), __indexOf.call(overlays, _ref) >= 0) {
-          overlayLayers[i].children[0].checked = true;
-        } else {
-          overlayLayers[i].children[0].checked = false;
-        }
-        i++;
-      }
-      return this.options.lc._onInputClick();
+      location.hash = "";
+      return clearInterval(this.hashChangeInterval);
     };
 
     return Hash;
