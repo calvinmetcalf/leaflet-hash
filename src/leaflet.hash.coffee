@@ -2,9 +2,16 @@ class Hash
 	constructor: (@map,@options={}) ->
 		unless @options.path
 			if @options.lc
-				@options.path = '{z}/{lat}/{lng}/{base}'
+				@options.path = '{base}/{z}/{lat}/{lng}'
 			else
 				@options.path = '{z}/{lat}/{lng}'
+		if @options.lc and not @options.formatBase
+			@options.formatBase = [
+				/[\sA-Z]/
+				(match)->
+					_ if match.matches /\s/
+					match.toLowerCase() if match.maches /[A-Z]/
+			]		
 		if @map._loaded
 			@startListning()
 		else	
@@ -93,7 +100,7 @@ class Hash
 		len = inputs.length
 		i = 0
 		while i<len
-			if inputs[i].name is 'leaflet-base-layers' and @options.lc._layers[inputs[i].layerId].name is base
+			if inputs[i].name is 'leaflet-base-layers' and @options.lc._layers[inputs[i].layerId].name.replace(@options.formatBase...) is base
 				inputs[i].checked = true
 				@options.lc._onInputClick()
 				return true
@@ -106,7 +113,7 @@ class Hash
 		i = 0
 		while i<len
 			if inputs[i].name is 'leaflet-base-layers' and inputs[i].checked
-				@base = @options.lc._layers[inputs[i].layerId].name
+				@base = @options.lc._layers[inputs[i].layerId].name.replace(@options.formatBase...)
 				return @base
 		false	
 	remove : ()=>
