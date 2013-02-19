@@ -198,12 +198,12 @@
   };
 
   L.Map.include({
-    addHash: function(map, options) {
+    addHash: function(options) {
       if (this._loaded) {
-        this._hash = new Hash(this, map, options);
+        this._hash = L.hash(this, options);
       } else {
         this.on("load", function() {
-          return this._hash = new Hash(this, map, options);
+          return this._hash = L.hash(this, options);
         });
       }
       return this;
