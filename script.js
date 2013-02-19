@@ -1,4 +1,3 @@
-L.css();
 
 var m = L.map('map').setView([37.13, -80.33], 4);
 
