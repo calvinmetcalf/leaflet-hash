@@ -39,7 +39,7 @@
 	],
 	"license": "MIT",
 	"dependencies": {
-		"coffee-script":"1.x",
+	
 		"uglify-js" : ">= 0.0.1"
 	}
 }
