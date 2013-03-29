@@ -12,7 +12,7 @@ You can view a demo of leaflet-hash at [calvinmetcalf.github.com/leaflet-hash](h
 
 1. Prepare a basic leaflet map. You can find instructions on [Leaflet's quick-start guide](http://leaflet.cloudmade.com/examples/quick-start.html).
 
-2. Include [leaflet-hash.js](https://github.com/calvinmetcalf/leaflet-hash/blob/master/leaflet-hash.js).
+2. Include [leaflet-hash.js](https://raw.github.com/calvinmetcalf/leaflet-hash/master/leaflet-hash.js).
 
 3. Once you have initialized the map (an instance of [L.Map](http://leaflet.cloudmade.com/reference.html#map-usage)), add the following code:
 
