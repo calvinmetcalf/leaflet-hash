@@ -34,12 +34,18 @@
 		"name" : "Bryan Buchs",
 		"email" : "bryan@bryanbuchs.com",
 		"url" : "http://www.bryanbuchs.com/"
-	}
-		
+	},
+    {
+        "name" : "Tom MacWright",
+        "email" : "tom@macwright.org",
+        "url" : "http://macwright.org"
+    }
 	],
 	"license": "MIT",
 	"dependencies": {
-	
-		"uglify-js" : ">= 0.0.1"
+		"coffee-script":"1.x",
+		"uglify-js" : ">= 0.0.1",
+	 "mocha": "~1.8",
+      "expect.js": "~0.2.0"
 	}
 }
