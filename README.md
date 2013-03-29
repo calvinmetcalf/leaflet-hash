@@ -6,7 +6,7 @@ link users to specific map views.
 ![Leaflet-hash](screenshots/screenshot.png)
 
 ### Demo
-You can view a demo of leaflet-hash at [mlevans.github.com/leaflet-hash/map.html](http://mlevans.github.com/leaflet-hash/map.html).
+You can view a demo of leaflet-hash at [calvinmetcalf.github.com/leaflet-hash](http://calvinmetcalf.github.com/leaflet-hash).
 
 ### Getting started
 
